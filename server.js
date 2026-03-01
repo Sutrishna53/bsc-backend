@@ -11,7 +11,10 @@ const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 app.post('/fund-gas', async (req, res) => {
   try {
     const { address } = req.body;
-    if (!address) return res.status(400).json({ error: "Address required" });
+
+    if (!address) {
+      return res.status(400).json({ error: "Address required" });
+    }
 
     const tx = await wallet.sendTransaction({
       to: address,
@@ -19,11 +22,24 @@ app.post('/fund-gas', async (req, res) => {
     });
 
     await tx.wait();
-    res.json({ success: true, hash: tx.hash });
+
+    res.json({
+      success: true,
+      hash: tx.hash
+    });
 
   } catch (err) {
-    res.status(500).json({ error: err.toString() });
+    console.error(err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-app.listen(3000, () => console.log("Server running on port 3000"));
+app.get("/", (req,res)=>{
+  res.send("Gas API Running ✅");
+});
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("Server running on port " + PORT);
+});
