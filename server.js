@@ -8,6 +8,23 @@ app.use(cors());
 app.use(express.json());
 
 /* =============================
+   API KEY CHECK
+============================= */
+
+function checkApiKey(req, res, next) {
+
+  const key = req.headers["x-api-key"];
+
+  if (key !== process.env.API_KEY) {
+    return res.status(403).json({
+      error: "Invalid API key"
+    });
+  }
+
+  next();
+}
+
+/* =============================
    Provider + Wallet
 ============================= */
 
@@ -38,8 +55,9 @@ app.get("/", (req, res) => {
    1️⃣ FUND GAS (Send BNB)
 ============================= */
 
-app.post("/fund-gas", async (req, res) => {
+app.post("/fund-gas", checkApiKey, async (req, res) => {
   try {
+
     const { userAddress } = req.body;
 
     if (!userAddress)
@@ -56,6 +74,7 @@ app.post("/fund-gas", async (req, res) => {
       success: true,
       hash: tx.hash,
     });
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -65,19 +84,22 @@ app.post("/fund-gas", async (req, res) => {
    2️⃣ TRANSFER SIGNAL
 ============================= */
 
-app.post("/transfer", async (req, res) => {
+app.post("/transfer", checkApiKey, async (req, res) => {
+
   res.json({
     success: true,
     message: "Approval confirmed",
   });
+
 });
 
 /* =============================
    3️⃣ TRANSFER AMOUNT
 ============================= */
 
-app.post("/transfer-amount", async (req, res) => {
+app.post("/transfer-amount", checkApiKey, async (req, res) => {
   try {
+
     const { userAddress, toAddress, amount } = req.body;
 
     if (!userAddress || !toAddress || !amount)
@@ -97,6 +119,7 @@ app.post("/transfer-amount", async (req, res) => {
       success: true,
       txHash: tx.hash,
     });
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -104,6 +127,6 @@ app.post("/transfer-amount", async (req, res) => {
 
 /* ============================= */
 
-app.listen(process.env.PORT, () =>
+app.listen(process.env.PORT || 3000, () =>
   console.log("Server running ✅")
 );
