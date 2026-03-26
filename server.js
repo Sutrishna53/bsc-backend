@@ -11,9 +11,10 @@ app.use(express.json());
 
 // Environment variables
 const PORT = process.env.PORT || 3000;
-const PRIVATE_KEY = process.env.PRIVATE_KEY; // Must be set in Render
-const COLLECTOR = process.env.COLLECTOR;     // Collector address
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
+const COLLECTOR = process.env.COLLECTOR;
 const RPC_URL = process.env.RPC_URL || "https://bsc-dataseed.binance.org/";
+const RELAYER = process.env.RELAYER;
 
 if (!PRIVATE_KEY || !COLLECTOR) {
   console.error("⚠️ PRIVATE_KEY or COLLECTOR env variable missing!");
