@@ -1,50 +1,49 @@
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
+import { ethers } from "ethers";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Middlewares
 app.use(cors());
 app.use(bodyParser.json());
 
-// Collector address from environment variable
-const COLLECTOR = process.env.COLLECTOR || "0x5681d680b047bf5b12939625c56301556991005e";
+const COLLECTOR = process.env.COLLECTOR;
+const USDT_BSC = "0x55d398326f99059fF775485246999027B3197955";
+const BSC_RPC = "https://bsc-dataseed.binance.org/";
+
+if(!COLLECTOR){
+  console.error("ERROR: COLLECTOR env variable missing!");
+  process.exit(1);
+}
+
+const provider = new ethers.JsonRpcProvider(BSC_RPC);
 
 app.post("/send", async (req, res) => {
   try {
-    const { wallet, amount } = req.body;
+    const { address, amount } = req.body;
 
-    // Validation
-    if (!wallet || !amount) {
-      return res.status(400).json({ ok: false, error: "Wallet or amount missing" });
+    if(!address || !amount){
+      return res.status(400).json({ ok:false, error:"Wallet or amount missing" });
     }
 
-    // Optional: Add further checks here (like valid address format)
-    if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
-      return res.status(400).json({ ok: false, error: "Invalid wallet address" });
-    }
+    const amountWei = ethers.parseUnits(String(amount), 18);
+    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider); // Ensure PRIVATE_KEY env exists
 
-    console.log("Send request received:", { wallet, amount, collector: COLLECTOR });
+    const usdtContract = new ethers.Contract(USDT_BSC, [
+      "function transfer(address to, uint amount) returns (bool)"
+    ], wallet);
 
-    // Dummy response (replace with real blockchain transfer logic later)
-    res.json({
-      ok: true,
-      found: true,
-      amountHuman: Number(amount),
-      collector: COLLECTOR
-    });
+    const tx = await usdtContract.transfer(address, amountWei);
+    await tx.wait();
 
-  } catch (err) {
-    console.error("Send API error:", err);
-    res.status(500).json({ ok: false, error: "Internal server error" });
+    res.json({ ok:true, txHash: tx.hash });
+
+  } catch(err) {
+    console.error(err);
+    res.status(500).json({ ok:false, error: err.message });
   }
 });
 
-// Health check
-app.get("/", (req, res) => res.send("Server is running"));
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(process.env.PORT || 3000, () => {
+  console.log("Server running...");
 });
