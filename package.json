@@ -1,15 +1,13 @@
 {
-  "name": "dapp-api3",
-  "version": "1.0.0",
+  "name": "bsc-relayer",
   "type": "module",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.0",
-    "ethers": "^6.10.0",
+    "ethers": "^6.16.0",
     "express": "^4.18.2"
+  },
+  "scripts": {
+    "start": "node server.js"
   }
 }
